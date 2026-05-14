@@ -49,13 +49,21 @@ function setupEventListeners() {
         }
     });
 
-    // Hamburger Menu
+    // Hamburger Menu (Sidebar)
     const hamburger = document.getElementById('hamburger');
     hamburger.addEventListener('click', toggleSidebar);
 
-    // Theme Toggle
-    const themeToggle = document.getElementById('themeToggle');
-    themeToggle.addEventListener('click', toggleTheme);
+    // Hamburger Menu (Header)
+    const headerHamburger = document.getElementById('headerHamburger');
+    headerHamburger.addEventListener('click', toggleSidebar);
+
+    // Theme Toggle (Sidebar)
+    const themeToggleSidebar = document.getElementById('themeToggleSidebar');
+    themeToggleSidebar.addEventListener('click', toggleTheme);
+
+    // Theme Toggle (Header)
+    const themeToggleHeader = document.getElementById('themeToggleHeader');
+    themeToggleHeader.addEventListener('click', toggleTheme);
 
     // Sidebar Navigation
     const navItems = document.querySelectorAll('.nav-item');
@@ -69,8 +77,9 @@ function setupEventListeners() {
     document.addEventListener('click', function(e) {
         const sidebar = document.querySelector('.sidebar');
         const hamburger = document.querySelector('.hamburger');
+        const headerHamburger = document.querySelector('.header-hamburger');
         if (window.innerWidth <= 768 && sidebar.classList.contains('active')) {
-            if (!e.target.closest('.sidebar') && !e.target.closest('.hamburger')) {
+            if (!e.target.closest('.sidebar') && !e.target.closest('.hamburger') && !e.target.closest('.header-hamburger')) {
                 sidebar.classList.remove('active');
             }
         }
@@ -292,6 +301,23 @@ function toggleTheme() {
     }
 
     localStorage.setItem(THEME_KEY, newTheme);
+    updateThemeToggleIcons();
+}
+
+// Update Theme Toggle Icons
+function updateThemeToggleIcons() {
+    const currentTheme = localStorage.getItem(THEME_KEY) || 'dark';
+    const headerToggle = document.getElementById('themeToggleHeader');
+    const sidebarToggle = document.getElementById('themeToggleSidebar');
+    
+    const icon = currentTheme === 'dark' ? '☀️' : '🌙';
+    
+    if (headerToggle) {
+        headerToggle.innerHTML = `<span>${icon}</span>`;
+    }
+    if (sidebarToggle) {
+        sidebarToggle.innerHTML = `<span class="icon">${icon}</span>`;
+    }
 }
 
 // Load Theme
@@ -303,6 +329,8 @@ function loadTheme() {
     } else {
         document.body.classList.remove('light-theme');
     }
+    
+    updateThemeToggleIcons();
 }
 
 // Hamburger Menu
