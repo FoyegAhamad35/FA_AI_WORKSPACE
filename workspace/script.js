@@ -14,6 +14,26 @@ function initializeApp() {
     setupEventListeners();
     loadTheme();
     loadChatHistory();
+    fixMobileViewport();
+}
+
+// Fix Mobile Viewport
+function fixMobileViewport() {
+    // Ensure proper viewport handling for mobile
+    const handleResize = () => {
+        const vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+        
+        // Close sidebar on orientation change if open
+        const sidebar = document.querySelector('.sidebar');
+        if (window.innerWidth > 768 && sidebar.classList.contains('active')) {
+            sidebar.classList.remove('active');
+        }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+    handleResize();
 }
 
 // Setup Event Listeners
@@ -43,6 +63,17 @@ function setupEventListeners() {
         item.addEventListener('click', function() {
             handleNavClick(this);
         });
+    });
+    
+    // Close sidebar when clicking outside on mobile
+    document.addEventListener('click', function(e) {
+        const sidebar = document.querySelector('.sidebar');
+        const hamburger = document.querySelector('.hamburger');
+        if (window.innerWidth <= 768 && sidebar.classList.contains('active')) {
+            if (!e.target.closest('.sidebar') && !e.target.closest('.hamburger')) {
+                sidebar.classList.remove('active');
+            }
+        }
     });
 }
 
@@ -90,7 +121,9 @@ function addMessage(text, sender) {
     messagesContainer.appendChild(messageDiv);
     
     // Scroll to bottom
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    setTimeout(() => {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }, 0);
 }
 
 // Create Action Row
@@ -276,14 +309,6 @@ function loadTheme() {
 function toggleSidebar() {
     const sidebar = document.querySelector('.sidebar');
     sidebar.classList.toggle('active');
-
-    // Close sidebar when clicking outside
-    document.addEventListener('click', function closeSidebar(e) {
-        if (!e.target.closest('.sidebar') && !e.target.closest('.hamburger')) {
-            sidebar.classList.remove('active');
-            document.removeEventListener('click', closeSidebar);
-        }
-    });
 }
 
 // Navigation
@@ -299,7 +324,9 @@ function handleNavClick(navItem) {
     // Close sidebar on mobile
     const sidebar = document.querySelector('.sidebar');
     if (window.innerWidth <= 768) {
-        sidebar.classList.remove('active');
+        setTimeout(() => {
+            sidebar.classList.remove('active');
+        }, 300);
     }
 
     const chatType = navItem.dataset.chat;
@@ -347,10 +374,3 @@ function loadChatHistory() {
         addMessage(initialMessage, 'bot');
     }
 }
-
-// Handle Window Resize
-window.addEventListener('resize', function() {
-    if (window.innerWidth > 768) {
-        document.querySelector('.sidebar').classList.remove('active');
-    }
-});
