@@ -63,6 +63,7 @@ button {
   overflow: hidden;
 }
 
+/* Header */
 .app-header {
   height: 64px;
   padding: 0 14px;
@@ -70,14 +71,14 @@ button {
   grid-template-columns: 44px 1fr 44px;
   align-items: center;
   gap: 10px;
-  background: rgba(17, 24, 33, 0.92);
+  background: rgba(17, 24, 33, 0.94);
   border-bottom: 1px solid var(--line);
   backdrop-filter: blur(18px);
   z-index: 20;
 }
 
 body.light .app-header {
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.94);
 }
 
 .app-header h1 {
@@ -103,6 +104,7 @@ body.light .app-header {
   transform: scale(0.96);
 }
 
+/* Chat */
 .chat-shell {
   min-height: 0;
   display: grid;
@@ -189,6 +191,7 @@ body.light .app-header {
   background: rgba(90, 167, 255, 0.14);
 }
 
+/* Typing */
 .typing {
   display: inline-flex;
   gap: 5px;
@@ -223,6 +226,7 @@ body.light .app-header {
   }
 }
 
+/* Input */
 .composer-wrap {
   padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
   background: rgba(17, 24, 33, 0.96);
@@ -278,6 +282,7 @@ body.light .composer-wrap {
   transform: scale(0.96);
 }
 
+/* Drawer */
 .drawer-overlay {
   position: fixed;
   inset: 0;
@@ -358,6 +363,7 @@ body.light .composer-wrap {
   line-height: 1.5;
 }
 
+/* Toast */
 .toast {
   position: fixed;
   left: 50%;
@@ -383,6 +389,7 @@ body.light .composer-wrap {
   transform: translateX(-50%) translateY(0);
 }
 
+/* Desktop */
 @media (min-width: 768px) {
   .app {
     max-width: 980px;
@@ -409,6 +416,7 @@ body.light .composer-wrap {
   }
 }
 
+/* Small Phone */
 @media (max-width: 380px) {
   .app-header h1 {
     font-size: 16px;
