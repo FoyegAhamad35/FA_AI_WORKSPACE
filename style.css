@@ -51,6 +51,12 @@ button {
   border: none;
 }
 
+button:disabled,
+input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .app {
   width: 100%;
   height: var(--app-height, 100svh);
@@ -154,6 +160,11 @@ body.light .app-header {
   background: var(--user);
   color: var(--user-text);
   border-bottom-right-radius: 8px;
+}
+
+.message.error .bubble {
+  background: rgba(255, 107, 107, 0.12);
+  border-color: rgba(255, 107, 107, 0.35);
 }
 
 .message-time {
