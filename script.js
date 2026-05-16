@@ -1,11 +1,12 @@
 "use strict";
 
-const STORAGE_KEY = "fa_ai_workspace_messages_v1";
+const STORAGE_KEY = "fa_ai_workspace_messages_v2";
 const THEME_KEY = "fa_ai_workspace_theme_v1";
 
 const messagesEl = document.getElementById("messages");
 const chatForm = document.getElementById("chatForm");
 const messageInput = document.getElementById("messageInput");
+const sendBtn = document.getElementById("sendBtn");
 
 const themeBtn = document.getElementById("themeBtn");
 const drawerThemeBtn = document.getElementById("drawerThemeBtn");
@@ -22,6 +23,7 @@ const toastEl = document.getElementById("toast");
 let messages = [];
 let speakingMessageId = null;
 let toastTimer = null;
+let isBusy = false;
 
 function createId() {
   if (window.crypto && typeof window.crypto.randomUUID === "function") {
@@ -57,7 +59,7 @@ function defaultMessages() {
     {
       id: createId(),
       role: "assistant",
-      text: "Hello! I'm FA AI Assistant. How can I help you today?",
+      text: "Hello! I'm FA AI Assistant. Phase 2A core chat is ready. Secure AI connection will be added next.",
       time: getTime()
     }
   ];
@@ -116,11 +118,23 @@ function closeDrawer() {
   drawer.setAttribute("aria-hidden", "true");
 }
 
-function addMessage(role, text) {
+function setBusy(status) {
+  isBusy = status;
+  messageInput.disabled = status;
+  sendBtn.disabled = status;
+  sendBtn.textContent = status ? "…" : "➤";
+
+  if (!status) {
+    messageInput.focus();
+  }
+}
+
+function addMessage(role, text, type = "normal") {
   messages.push({
     id: createId(),
     role,
     text,
+    type,
     time: getTime()
   });
 
@@ -134,6 +148,11 @@ function renderMessages() {
   messages.forEach((message) => {
     const article = document.createElement("article");
     article.className = `message ${message.role}`;
+
+    if (message.type === "error") {
+      article.classList.add("error");
+    }
+
     article.dataset.id = message.id;
 
     const bubble = document.createElement("div");
@@ -316,14 +335,23 @@ function hideTyping() {
   if (typingMessage) typingMessage.remove();
 }
 
-function createDemoReply(userText) {
+/*
+  Phase 2A AI-ready function.
+
+  Important:
+  API key must NOT be placed inside frontend files.
+  In Phase 2B, this function will call a secure backend/proxy/worker.
+*/
+async function getAIResponse(userText) {
   const cleanText = userText.trim();
 
-  if (cleanText.length < 3) {
+  if (cleanText.length < 2) {
     return "Please write a little more so I can understand your message.";
   }
 
-  return "This is Phase 1 demo mode. Real AI response will be added in Phase 2. Now the chat UI, message save, copy, like, voice, share, theme toggle, and drawer menu are working.";
+  await new Promise((resolve) => setTimeout(resolve, 700));
+
+  return "Phase 2 AI connection is ready. Secure API connection will be added next.";
 }
 
 function resetChat() {
@@ -333,22 +361,35 @@ function resetChat() {
   renderMessages();
 }
 
-function handleSubmit(event) {
+async function handleSubmit(event) {
   event.preventDefault();
+
+  if (isBusy) return;
 
   const text = messageInput.value.trim();
   if (!text) return;
 
   addMessage("user", text);
   messageInput.value = "";
-  messageInput.focus();
 
+  setBusy(true);
   showTyping();
 
-  setTimeout(() => {
+  try {
+    const reply = await getAIResponse(text);
     hideTyping();
-    addMessage("assistant", createDemoReply(text));
-  }, 650);
+    addMessage("assistant", reply);
+  } catch (error) {
+    console.error(error);
+    hideTyping();
+    addMessage(
+      "assistant",
+      "Something went wrong while preparing the AI response. Please try again.",
+      "error"
+    );
+  } finally {
+    setBusy(false);
+  }
 }
 
 function handleActionClick(event) {
@@ -413,6 +454,7 @@ function init() {
   });
 
   window.addEventListener("resize", setMobileHeight);
+
   window.addEventListener("orientationchange", () => {
     setTimeout(setMobileHeight, 250);
   });
