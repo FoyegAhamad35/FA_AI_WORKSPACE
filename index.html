@@ -1,14 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Redirecting...</title>
-    <script>
-        window.location.href = 'workspace/index.html';
-    </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0f16" />
+  <title>FA AI WORKSPACE</title>
+  <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
-    <p>Redirecting to workspace app...</p>
+  <div class="app" id="app">
+
+    <header class="app-header">
+      <button class="header-btn" id="menuBtn" type="button" aria-label="Open menu">☰</button>
+      <h1>FA AI Assistant</h1>
+      <button class="header-btn" id="themeBtn" type="button" aria-label="Toggle theme">🌙</button>
+    </header>
+
+    <div class="drawer-overlay" id="drawerOverlay"></div>
+
+    <aside class="drawer" id="drawer" aria-hidden="true">
+      <div class="drawer-header">
+        <strong>FA AI WORKSPACE</strong>
+        <button class="drawer-close" id="closeDrawerBtn" type="button" aria-label="Close menu">×</button>
+      </div>
+
+      <div class="drawer-content">
+        <button class="drawer-item" id="newChatBtn" type="button">＋ New Chat</button>
+        <button class="drawer-item" id="clearChatBtn" type="button">🧹 Clear Chat</button>
+        <button class="drawer-item" id="drawerThemeBtn" type="button">🌙 Dark Theme</button>
+
+        <div class="drawer-note">
+          <p><strong>Mode:</strong> Phase 1 Demo</p>
+          <p>No API • No Backend • No React</p>
+        </div>
+      </div>
+    </aside>
+
+    <main class="chat-shell">
+      <section class="messages" id="messages" aria-live="polite"></section>
+
+      <form class="composer-wrap" id="chatForm">
+        <div class="composer">
+          <input
+            id="messageInput"
+            class="message-input"
+            type="text"
+            placeholder="Type your message here..."
+            autocomplete="off"
+          />
+          <button class="send-btn" id="sendBtn" type="submit" aria-label="Send message">➤</button>
+        </div>
+      </form>
+    </main>
+
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <script src="./script.js"></script>
 </body>
 </html>
