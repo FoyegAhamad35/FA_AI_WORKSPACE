@@ -9,6 +9,8 @@ const messagesEl = document.getElementById("messages");
 const chatForm = document.getElementById("chatForm");
 const messageInput = document.getElementById("messageInput");
 const sendBtn = document.getElementById("sendBtn");
+const stopBtn = document.getElementById("stopBtn");
+const composer = document.getElementById("composer");
 
 const themeBtn = document.getElementById("themeBtn");
 const drawerThemeBtn = document.getElementById("drawerThemeBtn");
@@ -26,6 +28,8 @@ let messages = [];
 let speakingMessageId = null;
 let toastTimer = null;
 let isBusy = false;
+let currentController = null;
+let stopRequested = false;
 
 function createId() {
   if (window.crypto && typeof window.crypto.randomUUID === "function") {
@@ -53,7 +57,7 @@ function showToast(text) {
 
   toastTimer = setTimeout(() => {
     toastEl.classList.remove("show");
-  }, 1500);
+  }, 1600);
 }
 
 function defaultMessages() {
@@ -127,11 +131,20 @@ function closeDrawer() {
 
 function setBusy(status) {
   isBusy = status;
+
   messageInput.disabled = status;
   sendBtn.disabled = status;
-  sendBtn.textContent = status ? "…" : "➤";
 
-  if (!status) {
+  if (status) {
+    sendBtn.textContent = "…";
+    stopBtn.classList.remove("hidden");
+    composer.classList.add("is-generating");
+  } else {
+    sendBtn.textContent = "➤";
+    stopBtn.classList.add("hidden");
+    composer.classList.remove("is-generating");
+    currentController = null;
+    stopRequested = false;
     messageInput.focus();
   }
 }
@@ -354,7 +367,7 @@ function normalizeRole(role) {
 }
 
 function buildRecentContext() {
-  const context = messages
+  return messages
     .filter((message) => {
       return (
         normalizeRole(message.role) &&
@@ -368,8 +381,51 @@ function buildRecentContext() {
       role: normalizeRole(message.role),
       content: message.text.trim().slice(0, 1200)
     }));
+}
 
-  return context;
+function stopGenerating() {
+  if (!isBusy || !currentController) {
+    return;
+  }
+
+  stopRequested = true;
+  currentController.abort();
+  hideTyping();
+  showToast("Stopped");
+}
+
+function getFriendlyError(error) {
+  const message = String(error?.message || "").toLowerCase();
+
+  if (stopRequested || error?.name === "AbortError") {
+    return "";
+  }
+
+  if (message.includes("timed out") || message.includes("timeout")) {
+    return "Request timed out. Please try again.";
+  }
+
+  if (message.includes("failed to fetch") || message.includes("network")) {
+    return "Network connection problem. Please check internet and try again.";
+  }
+
+  if (message.includes("429")) {
+    return "AI service is busy or rate limited. Please wait a moment and try again.";
+  }
+
+  if (message.includes("401") || message.includes("403") || message.includes("api key")) {
+    return "AI connection permission problem. Please check the Worker API key secret.";
+  }
+
+  if (message.includes("500") || message.includes("502") || message.includes("503") || message.includes("504")) {
+    return "AI server is temporarily unavailable. Please try again shortly.";
+  }
+
+  if (error?.message) {
+    return `AI connection error: ${error.message}`;
+  }
+
+  return "AI connection error. Please try again.";
 }
 
 async function getAIResponse(userText) {
@@ -380,9 +436,16 @@ async function getAIResponse(userText) {
   }
 
   const recentContext = buildRecentContext();
-
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+  currentController = controller;
+
+  let timeoutTriggered = false;
+
+  const timeoutId = setTimeout(() => {
+    timeoutTriggered = true;
+    controller.abort();
+  }, 30000);
 
   try {
     const response = await fetch(WORKER_API_URL, {
@@ -408,7 +471,9 @@ async function getAIResponse(userText) {
     }
 
     if (!response.ok || !data.ok) {
-      throw new Error(data.error || `Worker error: ${response.status}`);
+      const error = new Error(data.error || `Worker error: ${response.status}`);
+      error.status = response.status;
+      throw error;
     }
 
     return data.reply || "AI response received, but no text was returned.";
@@ -416,7 +481,11 @@ async function getAIResponse(userText) {
     clearTimeout(timeoutId);
 
     if (error.name === "AbortError") {
-      throw new Error("Request timed out. Please try again.");
+      if (timeoutTriggered) {
+        throw new Error("Request timed out. Please try again.");
+      }
+
+      throw error;
     }
 
     throw error;
@@ -424,10 +493,12 @@ async function getAIResponse(userText) {
 }
 
 function resetChat() {
+  stopGenerating();
   stopVoice();
   messages = defaultMessages();
   saveMessages();
   renderMessages();
+  setBusy(false);
 }
 
 async function handleSubmit(event) {
@@ -447,17 +518,20 @@ async function handleSubmit(event) {
 
   try {
     const reply = await getAIResponse(text);
-    hideTyping();
-    addMessage("assistant", reply);
-  } catch (error) {
-    console.error(error);
+
     hideTyping();
 
-    addMessage(
-      "assistant",
-      `AI connection error: ${error.message}`,
-      "error"
-    );
+    if (!stopRequested) {
+      addMessage("assistant", reply);
+    }
+  } catch (error) {
+    hideTyping();
+
+    const friendlyError = getFriendlyError(error);
+
+    if (friendlyError) {
+      addMessage("assistant", friendlyError, "error");
+    }
   } finally {
     setBusy(false);
   }
@@ -505,6 +579,8 @@ function init() {
 
   chatForm.addEventListener("submit", handleSubmit);
   messagesEl.addEventListener("click", handleActionClick);
+
+  stopBtn.addEventListener("click", stopGenerating);
 
   themeBtn.addEventListener("click", toggleTheme);
   drawerThemeBtn.addEventListener("click", toggleTheme);
