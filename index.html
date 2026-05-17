@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#0b0f16" />
   <title>FA AI WORKSPACE</title>
-  <link rel="stylesheet" href="./style.css?v=2b1" />
+  <link rel="stylesheet" href="./style.css?v=2e1" />
 </head>
 <body>
   <div class="app" id="app">
 
     <header class="app-header">
       <button class="header-btn" id="menuBtn" type="button" aria-label="Open menu">☰</button>
-      <h1>FA AI ASSISTANT</h1>
+      <h1>FA AI Assistant</h1>
       <button class="header-btn" id="themeBtn" type="button" aria-label="Toggle theme">🌙</button>
     </header>
 
@@ -30,8 +30,8 @@
         <button class="drawer-item" id="drawerThemeBtn" type="button">🌙 Dark Theme</button>
 
         <div class="drawer-note">
-          <p><strong>Mode:</strong> Phase 2D-2</p>
-          <p>Strong context memory enabled</p>
+          <p><strong>Mode:</strong> Phase 2E-1</p>
+          <p>Stop generating + better errors enabled</p>
         </div>
       </div>
     </aside>
@@ -40,7 +40,7 @@
       <section class="messages" id="messages" aria-live="polite"></section>
 
       <form class="composer-wrap" id="chatForm">
-        <div class="composer">
+        <div class="composer" id="composer">
           <input
             id="messageInput"
             class="message-input"
@@ -48,6 +48,17 @@
             placeholder="Type your message here..."
             autocomplete="off"
           />
+
+          <button
+            class="stop-btn hidden"
+            id="stopBtn"
+            type="button"
+            aria-label="Stop generating"
+            title="Stop generating"
+          >
+            ■
+          </button>
+
           <button class="send-btn" id="sendBtn" type="submit" aria-label="Send message">➤</button>
         </div>
       </form>
@@ -56,6 +67,6 @@
     <div class="toast" id="toast"></div>
   </div>
 
-  <script src="./script.js?v=2d2"></script>
+  <script src="./script.js?v=2e1"></script>
 </body>
 </html>
