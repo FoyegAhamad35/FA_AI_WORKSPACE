@@ -1,6 +1,8 @@
 "use strict";
 
-const STORAGE_KEY = "fa_ai_workspace_messages_v2";
+const WORKER_API_URL = "https://fa-ai-workspace-api.foyegahamad35.workers.dev";
+
+const STORAGE_KEY = "fa_ai_workspace_messages_v3";
 const THEME_KEY = "fa_ai_workspace_theme_v1";
 
 const messagesEl = document.getElementById("messages");
@@ -59,7 +61,7 @@ function defaultMessages() {
     {
       id: createId(),
       role: "assistant",
-      text: "Hello! I'm FA AI Assistant. Phase 2A core chat is ready. Secure AI connection will be added next.",
+      text: "Hello! I'm FA AI Assistant. Cloudflare Worker connection is ready.",
       time: getTime()
     }
   ];
@@ -336,11 +338,15 @@ function hideTyping() {
 }
 
 /*
-  Phase 2A AI-ready function.
+  Phase 2B-1:
+  This connects GitHub Pages frontend to Cloudflare Worker.
 
-  Important:
-  API key must NOT be placed inside frontend files.
-  In Phase 2B, this function will call a secure backend/proxy/worker.
+  Current Worker mode:
+  Test reply only.
+
+  Next Phase 2B-2:
+  Worker will connect to real AI API securely.
+  API key will stay inside Cloudflare Worker secret, not in frontend.
 */
 async function getAIResponse(userText) {
   const cleanText = userText.trim();
@@ -349,9 +355,43 @@ async function getAIResponse(userText) {
     return "Please write a little more so I can understand your message.";
   }
 
-  await new Promise((resolve) => setTimeout(resolve, 700));
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 20000);
 
-  return "Phase 2 AI connection is ready. Secure API connection will be added next.";
+  try {
+    const response = await fetch(WORKER_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        message: cleanText
+      }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`Worker error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.ok) {
+      throw new Error(data.error || "Worker returned failed response");
+    }
+
+    return data.reply || "Worker connected, but no reply was returned.";
+  } catch (error) {
+    clearTimeout(timeoutId);
+
+    if (error.name === "AbortError") {
+      throw new Error("Worker request timed out. Please try again.");
+    }
+
+    throw error;
+  }
 }
 
 function resetChat() {
@@ -384,7 +424,7 @@ async function handleSubmit(event) {
     hideTyping();
     addMessage(
       "assistant",
-      "Something went wrong while preparing the AI response. Please try again.",
+      "Cloudflare Worker connection failed. Please check the Worker URL and try again.",
       "error"
     );
   } finally {
