@@ -10,7 +10,6 @@ const chatForm = document.getElementById("chatForm");
 const messageInput = document.getElementById("messageInput");
 const sendBtn = document.getElementById("sendBtn");
 const stopBtn = document.getElementById("stopBtn");
-const composer = document.getElementById("composer");
 
 const themeBtn = document.getElementById("themeBtn");
 const drawerThemeBtn = document.getElementById("drawerThemeBtn");
@@ -30,6 +29,7 @@ let toastTimer = null;
 let isBusy = false;
 let currentController = null;
 let stopRequested = false;
+let activeRequestId = 0;
 
 function createId() {
   if (window.crypto && typeof window.crypto.randomUUID === "function") {
@@ -132,17 +132,18 @@ function closeDrawer() {
 function setBusy(status) {
   isBusy = status;
 
-  messageInput.disabled = status;
-  sendBtn.disabled = status;
-
   if (status) {
-    sendBtn.textContent = "…";
+    messageInput.disabled = true;
+    sendBtn.disabled = true;
+    sendBtn.classList.add("hidden");
     stopBtn.classList.remove("hidden");
-    composer.classList.add("is-generating");
+    stopBtn.disabled = false;
   } else {
-    sendBtn.textContent = "➤";
+    messageInput.disabled = false;
+    sendBtn.disabled = false;
+    stopBtn.disabled = false;
     stopBtn.classList.add("hidden");
-    composer.classList.remove("is-generating");
+    sendBtn.classList.remove("hidden");
     currentController = null;
     stopRequested = false;
     messageInput.focus();
@@ -389,9 +390,10 @@ function stopGenerating() {
   }
 
   stopRequested = true;
-  currentController.abort();
+  stopBtn.disabled = true;
   hideTyping();
   showToast("Stopped");
+  currentController.abort();
 }
 
 function getFriendlyError(error) {
@@ -493,8 +495,15 @@ async function getAIResponse(userText) {
 }
 
 function resetChat() {
-  stopGenerating();
+  activeRequestId += 1;
+
+  if (currentController) {
+    stopRequested = true;
+    currentController.abort();
+  }
+
   stopVoice();
+  hideTyping();
   messages = defaultMessages();
   saveMessages();
   renderMessages();
@@ -510,6 +519,9 @@ async function handleSubmit(event) {
 
   if (!text) return;
 
+  const requestId = activeRequestId + 1;
+  activeRequestId = requestId;
+
   addMessage("user", text);
   messageInput.value = "";
 
@@ -519,12 +531,20 @@ async function handleSubmit(event) {
   try {
     const reply = await getAIResponse(text);
 
+    if (requestId !== activeRequestId) {
+      return;
+    }
+
     hideTyping();
 
     if (!stopRequested) {
       addMessage("assistant", reply);
     }
   } catch (error) {
+    if (requestId !== activeRequestId) {
+      return;
+    }
+
     hideTyping();
 
     const friendlyError = getFriendlyError(error);
@@ -533,7 +553,9 @@ async function handleSubmit(event) {
       addMessage("assistant", friendlyError, "error");
     }
   } finally {
-    setBusy(false);
+    if (requestId === activeRequestId) {
+      setBusy(false);
+    }
   }
 }
 
@@ -576,6 +598,7 @@ function init() {
 
   messages = loadMessages();
   renderMessages();
+  setBusy(false);
 
   chatForm.addEventListener("submit", handleSubmit);
   messagesEl.addEventListener("click", handleActionClick);
