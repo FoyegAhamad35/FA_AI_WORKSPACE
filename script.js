@@ -30,6 +30,7 @@ let isBusy = false;
 let currentController = null;
 let stopRequested = false;
 let activeRequestId = 0;
+let typingAnimation = null;
 
 function createId() {
   if (window.crypto && typeof window.crypto.randomUUID === "function") {
@@ -65,7 +66,7 @@ function defaultMessages() {
     {
       id: createId(),
       role: "assistant",
-      text: "Hello! I'm FA AI Assistant. Beautiful reply formatting is ready.",
+      text: "Hello! I'm FA AI Assistant. Smooth typing effect is ready.",
       type: "normal",
       time: getTime()
     }
@@ -561,16 +562,136 @@ function buildRecentContext() {
     }));
 }
 
+function hasBengali(text) {
+  return /[\u0980-\u09FF]/.test(text);
+}
+
+function getTypingConfig(text) {
+  const length = text.length;
+  const bengali = hasBengali(text);
+
+  if (length > 1800) {
+    return { chunkSize: 10, delay: 14 };
+  }
+
+  if (length > 1000) {
+    return { chunkSize: 7, delay: 15 };
+  }
+
+  if (length > 600) {
+    return { chunkSize: 5, delay: 16 };
+  }
+
+  if (bengali) {
+    return { chunkSize: 2, delay: 18 };
+  }
+
+  return { chunkSize: 3, delay: 16 };
+}
+
+function startSmoothAssistantReply(fullText, requestId) {
+  return new Promise((resolve) => {
+    const article = document.createElement("article");
+    article.className = "message assistant streaming";
+
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+
+    const time = document.createElement("div");
+    time.className = "message-time";
+    time.textContent = getTime();
+
+    article.appendChild(bubble);
+    article.appendChild(time);
+    messagesEl.appendChild(article);
+
+    const text = String(fullText || "");
+    const config = getTypingConfig(text);
+
+    let index = 0;
+
+    typingAnimation = {
+      article,
+      bubble,
+      timer: null,
+      resolve
+    };
+
+    function finishTyping(saveText) {
+      if (typingAnimation?.timer) {
+        clearTimeout(typingAnimation.timer);
+      }
+
+      const visibleText = bubble.textContent || "";
+
+      article.remove();
+      typingAnimation = null;
+
+      if (saveText && visibleText.trim()) {
+        addMessage("assistant", visibleText.trim());
+      }
+
+      resolve();
+    }
+
+    function tick() {
+      if (requestId !== activeRequestId || stopRequested) {
+        finishTyping(false);
+        return;
+      }
+
+      index = Math.min(index + config.chunkSize, text.length);
+      bubble.textContent = text.slice(0, index);
+
+      scrollToBottom();
+
+      if (index >= text.length) {
+        finishTyping(true);
+        return;
+      }
+
+      typingAnimation.timer = setTimeout(tick, config.delay);
+    }
+
+    tick();
+  });
+}
+
 function stopGenerating() {
-  if (!isBusy || !currentController) {
+  if (!isBusy) {
     return;
   }
 
   stopRequested = true;
-  stopBtn.disabled = true;
+  activeRequestId += 1;
+
+  if (currentController) {
+    currentController.abort();
+    currentController = null;
+  }
+
+  if (typingAnimation) {
+    if (typingAnimation.timer) {
+      clearTimeout(typingAnimation.timer);
+    }
+
+    const partialText = typingAnimation.bubble.textContent || "";
+    typingAnimation.article.remove();
+
+    if (partialText.trim()) {
+      addMessage("assistant", partialText.trim());
+    }
+
+    if (typingAnimation.resolve) {
+      typingAnimation.resolve();
+    }
+
+    typingAnimation = null;
+  }
+
   hideTyping();
+  setBusy(false);
   showToast("Stopped");
-  currentController.abort();
 }
 
 function getFriendlyError(error) {
@@ -679,6 +800,20 @@ function resetChat() {
     currentController.abort();
   }
 
+  if (typingAnimation) {
+    if (typingAnimation.timer) {
+      clearTimeout(typingAnimation.timer);
+    }
+
+    typingAnimation.article.remove();
+
+    if (typingAnimation.resolve) {
+      typingAnimation.resolve();
+    }
+
+    typingAnimation = null;
+  }
+
   stopVoice();
   hideTyping();
   messages = defaultMessages();
@@ -715,7 +850,7 @@ async function handleSubmit(event) {
     hideTyping();
 
     if (!stopRequested) {
-      addMessage("assistant", reply);
+      await startSmoothAssistantReply(reply, requestId);
     }
   } catch (error) {
     if (requestId !== activeRequestId) {
