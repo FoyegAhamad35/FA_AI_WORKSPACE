@@ -2,7 +2,7 @@
 
 const WORKER_API_URL = "https://fa-ai-workspace-api.foyegahamad35.workers.dev";
 
-const STORAGE_KEY = "fa_ai_workspace_messages_worker_v1";
+const STORAGE_KEY = "fa_ai_workspace_messages_context_v1";
 const THEME_KEY = "fa_ai_workspace_theme_v1";
 
 const messagesEl = document.getElementById("messages");
@@ -31,7 +31,6 @@ function createId() {
   if (window.crypto && typeof window.crypto.randomUUID === "function") {
     return window.crypto.randomUUID();
   }
-
   return `msg_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
@@ -61,7 +60,8 @@ function defaultMessages() {
     {
       id: createId(),
       role: "assistant",
-      text: "Hello! I'm FA AI Assistant. Cloudflare Worker connection is ready.",
+      text: "Hello! I'm FA AI Assistant. I can now understand recent chat context.",
+      type: "normal",
       time: getTime()
     }
   ];
@@ -73,9 +73,7 @@ function loadMessages() {
     if (!saved) return defaultMessages();
 
     const parsed = JSON.parse(saved);
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      return defaultMessages();
-    }
+    if (!Array.isArray(parsed) || parsed.length === 0) return defaultMessages();
 
     return parsed;
   } catch {
@@ -126,9 +124,7 @@ function setBusy(status) {
   sendBtn.disabled = status;
   sendBtn.textContent = status ? "…" : "➤";
 
-  if (!status) {
-    messageInput.focus();
-  }
+  if (!status) messageInput.focus();
 }
 
 function addMessage(role, text, type = "normal") {
@@ -337,6 +333,23 @@ function hideTyping() {
   if (typingMessage) typingMessage.remove();
 }
 
+function buildRecentContext() {
+  return messages
+    .filter((message) => {
+      return (
+        (message.role === "user" || message.role === "assistant") &&
+        message.type !== "error" &&
+        typeof message.text === "string" &&
+        message.text.trim().length > 0
+      );
+    })
+    .slice(-12)
+    .map((message) => ({
+      role: message.role,
+      content: message.text.slice(0, 1200)
+    }));
+}
+
 async function getAIResponse(userText) {
   const cleanText = userText.trim();
 
@@ -345,7 +358,7 @@ async function getAIResponse(userText) {
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 20000);
+  const timeoutId = setTimeout(() => controller.abort(), 25000);
 
   try {
     const response = await fetch(WORKER_API_URL, {
@@ -354,29 +367,31 @@ async function getAIResponse(userText) {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        message: cleanText
+        message: cleanText,
+        messages: buildRecentContext()
       }),
       signal: controller.signal
     });
 
     clearTimeout(timeoutId);
 
-    if (!response.ok) {
-      throw new Error(`Worker error: ${response.status}`);
+    let data = {};
+    try {
+      data = await response.json();
+    } catch {
+      data = {};
     }
 
-    const data = await response.json();
-
-    if (!data.ok) {
-      throw new Error(data.error || "Worker returned failed response");
+    if (!response.ok || !data.ok) {
+      throw new Error(data.error || `Worker error: ${response.status}`);
     }
 
-    return data.reply || "Worker connected, but no reply was returned.";
+    return data.reply || "AI response received, but no text was returned.";
   } catch (error) {
     clearTimeout(timeoutId);
 
     if (error.name === "AbortError") {
-      throw new Error("Worker request timed out. Please try again.");
+      throw new Error("Request timed out. Please try again.");
     }
 
     throw error;
@@ -413,7 +428,7 @@ async function handleSubmit(event) {
     hideTyping();
     addMessage(
       "assistant",
-      "Cloudflare Worker connection failed. Please check the Worker URL and try again.",
+      `AI connection error: ${error.message}`,
       "error"
     );
   } finally {
@@ -431,26 +446,18 @@ function handleActionClick(event) {
 
   if (!message) return;
 
-  if (action === "copy") {
-    copyText(message.text);
-  }
+  if (action === "copy") copyText(message.text);
 
   if (action === "like") {
     button.classList.toggle("active");
     showToast(button.classList.contains("active") ? "Liked" : "Like removed");
   }
 
-  if (action === "voice") {
-    speakText(message);
-  }
+  if (action === "voice") speakText(message);
 
-  if (action === "share") {
-    shareText(message.text);
-  }
+  if (action === "share") shareText(message.text);
 
-  if (action === "more") {
-    showToast("More options later");
-  }
+  if (action === "more") showToast("More options later");
 }
 
 function init() {
