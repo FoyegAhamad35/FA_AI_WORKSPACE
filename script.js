@@ -31,6 +31,7 @@ function createId() {
   if (window.crypto && typeof window.crypto.randomUUID === "function") {
     return window.crypto.randomUUID();
   }
+
   return `msg_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
@@ -70,10 +71,16 @@ function defaultMessages() {
 function loadMessages() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) return defaultMessages();
+
+    if (!saved) {
+      return defaultMessages();
+    }
 
     const parsed = JSON.parse(saved);
-    if (!Array.isArray(parsed) || parsed.length === 0) return defaultMessages();
+
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      return defaultMessages();
+    }
 
     return parsed;
   } catch {
@@ -88,6 +95,7 @@ function saveMessages() {
 function loadTheme() {
   const savedTheme = localStorage.getItem(THEME_KEY);
   const theme = savedTheme === "light" ? "light" : "dark";
+
   applyTheme(theme);
 }
 
@@ -124,7 +132,9 @@ function setBusy(status) {
   sendBtn.disabled = status;
   sendBtn.textContent = status ? "…" : "➤";
 
-  if (!status) messageInput.focus();
+  if (!status) {
+    messageInput.focus();
+  }
 }
 
 function addMessage(role, text, type = "normal") {
@@ -225,6 +235,7 @@ async function copyText(text) {
     temp.value = text;
     temp.style.position = "fixed";
     temp.style.opacity = "0";
+
     document.body.appendChild(temp);
     temp.focus();
     temp.select();
@@ -286,6 +297,7 @@ function updateVoiceButtons() {
 
   buttons.forEach((button) => {
     const isActive = button.dataset.messageId === speakingMessageId;
+
     button.classList.toggle("active", isActive);
     button.textContent = isActive ? "⏹️" : "🔊";
     button.title = isActive ? "Stop voice" : "Speak";
@@ -330,7 +342,10 @@ function showTyping() {
 
 function hideTyping() {
   const typingMessage = document.getElementById("typingMessage");
-  if (typingMessage) typingMessage.remove();
+
+  if (typingMessage) {
+    typingMessage.remove();
+  }
 }
 
 function buildRecentContext() {
@@ -346,7 +361,7 @@ function buildRecentContext() {
     .slice(-12)
     .map((message) => ({
       role: message.role,
-      content: message.text.slice(0, 1200)
+      content: message.text.trim().slice(0, 1200)
     }));
 }
 
@@ -376,6 +391,7 @@ async function getAIResponse(userText) {
     clearTimeout(timeoutId);
 
     let data = {};
+
     try {
       data = await response.json();
     } catch {
@@ -411,6 +427,7 @@ async function handleSubmit(event) {
   if (isBusy) return;
 
   const text = messageInput.value.trim();
+
   if (!text) return;
 
   addMessage("user", text);
@@ -426,6 +443,7 @@ async function handleSubmit(event) {
   } catch (error) {
     console.error(error);
     hideTyping();
+
     addMessage(
       "assistant",
       `AI connection error: ${error.message}`,
@@ -438,6 +456,7 @@ async function handleSubmit(event) {
 
 function handleActionClick(event) {
   const button = event.target.closest(".action-btn");
+
   if (!button) return;
 
   const action = button.dataset.action;
@@ -446,18 +465,26 @@ function handleActionClick(event) {
 
   if (!message) return;
 
-  if (action === "copy") copyText(message.text);
+  if (action === "copy") {
+    copyText(message.text);
+  }
 
   if (action === "like") {
     button.classList.toggle("active");
     showToast(button.classList.contains("active") ? "Liked" : "Like removed");
   }
 
-  if (action === "voice") speakText(message);
+  if (action === "voice") {
+    speakText(message);
+  }
 
-  if (action === "share") shareText(message.text);
+  if (action === "share") {
+    shareText(message.text);
+  }
 
-  if (action === "more") showToast("More options later");
+  if (action === "more") {
+    showToast("More options later");
+  }
 }
 
 function init() {
@@ -496,7 +523,9 @@ function init() {
   });
 
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden) stopVoice();
+    if (document.hidden) {
+      stopVoice();
+    }
   });
 }
 
