@@ -65,7 +65,7 @@ function defaultMessages() {
     {
       id: createId(),
       role: "assistant",
-      text: "Hello! I'm FA AI Assistant. Strong context memory is ready.",
+      text: "Hello! I'm FA AI Assistant. Beautiful reply formatting is ready.",
       type: "normal",
       time: getTime()
     }
@@ -163,6 +163,177 @@ function addMessage(role, text, type = "normal") {
   renderMessages();
 }
 
+function appendInlineFormatted(parent, text) {
+  const source = String(text || "");
+  const pattern = /(\*\*([^*]+)\*\*|`([^`]+)`)/g;
+
+  let lastIndex = 0;
+  let match;
+
+  while ((match = pattern.exec(source)) !== null) {
+    if (match.index > lastIndex) {
+      parent.appendChild(document.createTextNode(source.slice(lastIndex, match.index)));
+    }
+
+    if (match[2]) {
+      const strong = document.createElement("strong");
+      strong.textContent = match[2];
+      parent.appendChild(strong);
+    }
+
+    if (match[3]) {
+      const code = document.createElement("code");
+      code.className = "inline-code";
+      code.textContent = match[3];
+      parent.appendChild(code);
+    }
+
+    lastIndex = pattern.lastIndex;
+  }
+
+  if (lastIndex < source.length) {
+    parent.appendChild(document.createTextNode(source.slice(lastIndex)));
+  }
+}
+
+function appendCodeBlock(container, codeText, language) {
+  const block = document.createElement("div");
+  block.className = "code-block";
+
+  const label = document.createElement("div");
+  label.className = "code-label";
+  label.textContent = language ? language.toUpperCase() : "CODE";
+
+  const pre = document.createElement("pre");
+  const code = document.createElement("code");
+
+  code.textContent = codeText.trimEnd();
+
+  pre.appendChild(code);
+  block.appendChild(label);
+  block.appendChild(pre);
+  container.appendChild(block);
+}
+
+function appendPlainFormatted(container, text) {
+  const lines = String(text || "").replace(/\r/g, "").split("\n");
+
+  let paragraphLines = [];
+  let currentList = null;
+  let currentListType = "";
+
+  function flushParagraph() {
+    const paragraphText = paragraphLines.join(" ").trim();
+
+    if (paragraphText) {
+      const p = document.createElement("p");
+      appendInlineFormatted(p, paragraphText);
+      container.appendChild(p);
+    }
+
+    paragraphLines = [];
+  }
+
+  function createList(type) {
+    if (!currentList || currentListType !== type) {
+      currentList = document.createElement(type);
+      currentList.className = type === "ol" ? "number-list" : "bullet-list";
+      currentListType = type;
+      container.appendChild(currentList);
+    }
+
+    return currentList;
+  }
+
+  lines.forEach((line) => {
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      flushParagraph();
+      currentList = null;
+      currentListType = "";
+      return;
+    }
+
+    const headingMatch = trimmed.match(/^(#{1,6})\s+(.+)$/);
+    if (headingMatch) {
+      flushParagraph();
+      currentList = null;
+      currentListType = "";
+
+      const heading = document.createElement("p");
+      heading.className = "formatted-heading";
+      appendInlineFormatted(heading, headingMatch[2]);
+      container.appendChild(heading);
+      return;
+    }
+
+    const bulletMatch = trimmed.match(/^[-*•]\s+(.+)$/);
+    if (bulletMatch) {
+      flushParagraph();
+
+      const list = createList("ul");
+      const li = document.createElement("li");
+      appendInlineFormatted(li, bulletMatch[1]);
+      list.appendChild(li);
+      return;
+    }
+
+    const numberMatch = trimmed.match(/^\d+[.)]\s+(.+)$/);
+    if (numberMatch) {
+      flushParagraph();
+
+      const list = createList("ol");
+      const li = document.createElement("li");
+      appendInlineFormatted(li, numberMatch[1]);
+      list.appendChild(li);
+      return;
+    }
+
+    currentList = null;
+    currentListType = "";
+    paragraphLines.push(trimmed);
+  });
+
+  flushParagraph();
+}
+
+function formatAssistantText(text) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "formatted-content";
+
+  const source = String(text || "");
+  const codeFencePattern = /```([a-zA-Z0-9_-]*)\s*\n([\s\S]*?)```/g;
+
+  let lastIndex = 0;
+  let match;
+
+  while ((match = codeFencePattern.exec(source)) !== null) {
+    const before = source.slice(lastIndex, match.index);
+
+    if (before.trim()) {
+      appendPlainFormatted(wrapper, before);
+    }
+
+    appendCodeBlock(wrapper, match[2], match[1]);
+    lastIndex = codeFencePattern.lastIndex;
+  }
+
+  const after = source.slice(lastIndex);
+
+  if (after.trim()) {
+    appendPlainFormatted(wrapper, after);
+  }
+
+  if (!wrapper.childNodes.length) {
+    const p = document.createElement("p");
+    p.textContent = source;
+    wrapper.appendChild(p);
+  }
+
+  return wrapper;
+}
+
 function renderMessages() {
   messagesEl.innerHTML = "";
 
@@ -178,7 +349,13 @@ function renderMessages() {
 
     const bubble = document.createElement("div");
     bubble.className = "bubble";
-    bubble.textContent = message.text;
+
+    if (message.role === "assistant" && message.type !== "error") {
+      bubble.classList.add("formatted");
+      bubble.appendChild(formatAssistantText(message.text));
+    } else {
+      bubble.textContent = message.text;
+    }
 
     const time = document.createElement("div");
     time.className = "message-time";
