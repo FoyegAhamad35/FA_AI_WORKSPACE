@@ -2,7 +2,7 @@
 
 const WORKER_API_URL = "https://fa-ai-workspace-api.foyegahamad35.workers.dev";
 
-const STORAGE_KEY = "fa_ai_workspace_messages_context_v1";
+const STORAGE_KEY = "fa_ai_workspace_messages_context_v2";
 const THEME_KEY = "fa_ai_workspace_theme_v1";
 
 const messagesEl = document.getElementById("messages");
@@ -61,7 +61,7 @@ function defaultMessages() {
     {
       id: createId(),
       role: "assistant",
-      text: "Hello! I'm FA AI Assistant. I can now understand recent chat context.",
+      text: "Hello! I'm FA AI Assistant. Strong context memory is ready.",
       type: "normal",
       time: getTime()
     }
@@ -95,7 +95,6 @@ function saveMessages() {
 function loadTheme() {
   const savedTheme = localStorage.getItem(THEME_KEY);
   const theme = savedTheme === "light" ? "light" : "dark";
-
   applyTheme(theme);
 }
 
@@ -348,21 +347,29 @@ function hideTyping() {
   }
 }
 
+function normalizeRole(role) {
+  if (role === "user") return "user";
+  if (role === "assistant") return "assistant";
+  return null;
+}
+
 function buildRecentContext() {
-  return messages
+  const context = messages
     .filter((message) => {
       return (
-        (message.role === "user" || message.role === "assistant") &&
+        normalizeRole(message.role) &&
         message.type !== "error" &&
         typeof message.text === "string" &&
         message.text.trim().length > 0
       );
     })
-    .slice(-12)
+    .slice(-14)
     .map((message) => ({
-      role: message.role,
+      role: normalizeRole(message.role),
       content: message.text.trim().slice(0, 1200)
     }));
+
+  return context;
 }
 
 async function getAIResponse(userText) {
@@ -372,8 +379,10 @@ async function getAIResponse(userText) {
     return "Please write a little more so I can understand your message.";
   }
 
+  const recentContext = buildRecentContext();
+
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 25000);
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
 
   try {
     const response = await fetch(WORKER_API_URL, {
@@ -383,7 +392,7 @@ async function getAIResponse(userText) {
       },
       body: JSON.stringify({
         message: cleanText,
-        messages: buildRecentContext()
+        messages: recentContext
       }),
       signal: controller.signal
     });
