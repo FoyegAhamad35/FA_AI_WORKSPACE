@@ -2,7 +2,7 @@
 
 const WORKER_API_URL = "https://fa-ai-workspace-api.foyegahamad35.workers.dev";
 
-const STORAGE_KEY = "fa_ai_workspace_messages_v3";
+const STORAGE_KEY = "fa_ai_workspace_messages_worker_v1";
 const THEME_KEY = "fa_ai_workspace_theme_v1";
 
 const messagesEl = document.getElementById("messages");
@@ -337,17 +337,6 @@ function hideTyping() {
   if (typingMessage) typingMessage.remove();
 }
 
-/*
-  Phase 2B-1:
-  This connects GitHub Pages frontend to Cloudflare Worker.
-
-  Current Worker mode:
-  Test reply only.
-
-  Next Phase 2B-2:
-  Worker will connect to real AI API securely.
-  API key will stay inside Cloudflare Worker secret, not in frontend.
-*/
 async function getAIResponse(userText) {
   const cleanText = userText.trim();
 
