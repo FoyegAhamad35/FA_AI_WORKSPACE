@@ -61,6 +61,10 @@ input:disabled {
   cursor: not-allowed;
 }
 
+.hidden {
+  display: none !important;
+}
+
 .app {
   width: 100%;
   height: var(--app-height, 100svh);
@@ -261,10 +265,6 @@ body.light .composer-wrap {
   align-items: center;
 }
 
-.composer.is-generating {
-  grid-template-columns: 1fr 46px 54px;
-}
-
 .message-input {
   width: 100%;
   height: 54px;
@@ -286,32 +286,37 @@ body.light .composer-wrap {
   box-shadow: 0 0 0 3px rgba(90, 167, 255, 0.14);
 }
 
-.send-btn {
+.button-slot {
+  width: 54px;
+  height: 54px;
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.send-btn,
+.stop-btn {
   width: 54px;
   height: 54px;
   border-radius: 17px;
+  display: grid;
+  place-items: center;
+  position: absolute;
+  inset: 0;
+}
+
+.send-btn {
   background: var(--primary);
   color: white;
   font-size: 22px;
-  display: grid;
-  place-items: center;
   box-shadow: 0 12px 28px rgba(90, 167, 255, 0.28);
 }
 
 .stop-btn {
-  width: 46px;
-  height: 54px;
-  border-radius: 17px;
   background: var(--danger-bg);
   color: var(--danger);
   border: 1px solid rgba(255, 92, 122, 0.38);
   font-size: 18px;
-  display: grid;
-  place-items: center;
-}
-
-.hidden {
-  display: none !important;
 }
 
 .send-btn:active,
@@ -473,21 +478,16 @@ body.light .composer-wrap {
     grid-template-columns: 1fr 50px;
   }
 
-  .composer.is-generating {
-    grid-template-columns: 1fr 42px 50px;
-  }
-
   .message-input,
+  .button-slot,
   .send-btn,
   .stop-btn {
     height: 50px;
   }
 
-  .send-btn {
-    width: 50px;
-  }
-
+  .button-slot,
+  .send-btn,
   .stop-btn {
-    width: 42px;
+    width: 50px;
   }
 }
